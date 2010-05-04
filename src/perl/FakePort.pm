@@ -31,26 +31,34 @@ sub write {
 
   my @values = unpack( "C*", $packed );
 
-  print "got write: ", join( ", ", map {"'$_'"} @values ),"\n";
+  #print "got write: ", join( ":", @values ),"\n";
+  sleep(0);
 }
 
 
 {
   my $read_offset = 0;
 
-  my @data =
+  my @data_map =
     (
-     [ map {0  } 0..255 ],
-     [ map {100} 0..255 ],
+     { 3 => 44 },
+     { 3 => 55 },
+     { 4 => 50 },
+     { 4 => 99 },
     );
 
   sub read {
     my $self = shift;
     my $size = shift;
 
-    my $read = pack("C*", @@data[$read_offset++]);
+    my $map  = $data_map[ $read_offset++ % @data_map ];
+    my @data = map { exists $$map{$_} ? $$map{$_} : 0 } 0..16;
 
-    return ( $read, length($read) );
+    #print "sending read: ", join( ":", @data ),"\n";
+
+    my $read = pack("C*", @data );
+
+    return ( length($read), $read );
   }
 
 }
