@@ -1,12 +1,20 @@
 #!/usr/bin/perl -w
 use strict;
 
+
 package FakePort;
+use Time::HiRes qw (time usleep);
+
+use constant SLEEP_TIME => 10*1000;
 
 sub new {
     my $class = shift;
+    my $file  = shift;
 
-    my $self  = {};
+    open( DATA, $file ) or
+      die "could not opend test file $file becoue $!";
+
+    my $self  = { file => \*DATA, 'print' => 0 };
 
     bless $self, $class;
     return $self;
@@ -31,34 +39,64 @@ sub write {
 
   my @values = unpack( "C*", $packed );
 
-  #print "got write: ", join( ":", @values ),"\n";
-  sleep(0);
-}
+  my $got = "got write: ". join( ":", @values )."\n";
 
-
-{
-  my $read_offset = 0;
-
-  my @data_map =
-    (
-     { 3 => 44 },
-     { 3 => 55 },
-     { 4 => 50 },
-     { 4 => 99 },
-    );
-
-  sub read {
-    my $self = shift;
-    my $size = shift;
-
-    my $map  = $data_map[ $read_offset++ % @data_map ];
-    my @data = map { exists $$map{$_} ? $$map{$_} : 0 } 0..16;
-
-    #print "sending read: ", join( ":", @data ),"\n";
-
-    my $read = pack("C*", @data );
-
-    return ( length($read), $read );
+  if ( $self->{'print'} ) {
+    warn $got;
   }
 
+  else {
+    my $expected = $self->getLine();
+
+    die "did not get expetced line\nG  $got\nE  $expected\n"
+      if ( $got ne $expected );
+  }
+
+  usleep(SLEEP_TIME);
 }
+
+sub getLine {
+  my $self = shift;
+
+  my $file = $self->{file};
+  my $line = <$file>;
+
+  if ( not defined $line ) {
+    print "run done.\n";
+    exit(0);
+  }
+
+  return $line;
+}
+
+
+sub read {
+  my $self = shift;
+  my $size = shift;
+
+  my @data;
+
+  if ( $self->{'print'} ) {
+    @data = map { int(rand(51)) } 0..16;
+    warn "sending read: ", join( ":", @data ),"\n";
+  }
+
+  else {
+    my $line = $self->getLine();
+
+    $line =~ /sending read: ([\d:]+)/ or
+      die "could not parce read line:\n  $line";
+
+    @data = split /:/, $1;
+
+  }
+
+  my $read = pack("C*", @data );
+
+  usleep(SLEEP_TIME);
+
+  return ( length($read), $read );
+}
+
+
+1;
