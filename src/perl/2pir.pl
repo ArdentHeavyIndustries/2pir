@@ -187,66 +187,60 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 
     if($effect_state{$effect} eq 'off') {
 	if($state eq 'low') {
-	    push @to_write, $effect_addresses{$effect}->[3];
-	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
+          push @to_write, getEffectAddresses( $effect, 3 );
+          $last_fired{$effect} = time();
+          #print "fire: $effect, $state\n";
 	} elsif($state eq 'high') {
-	    push @to_write, $effect_addresses{$effect}->[1];
-	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
+          push @to_write, getEffectAddresses( $effect, 1 );
+          $last_fired{$effect} = time();
+          #print "fire: $effect, $state\n";
 	} elsif($state eq 'off' && $i%100 == 0) {
-	    # this clause makes sure to turn stuff off if it should be.
-	    push @to_write, $effect_addresses{$effect}->[2];
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[2];
-            #print "fire: $effect, $state (anyway)\n";
-	    # already off.
-	    #print "off from off\n";
+          # this clause makes sure to turn stuff off if it should be.
+          push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
+          #print "fire: $effect, $state (anyway)\n";
+          # already off.
+          #print "off from off\n";
 	}
     } elsif($effect_state{$effect} eq 'low') {
 	# low effect is on.
 	if($state eq 'low') {
-	    # do nothing.
+          # do nothing.
 	} elsif($state eq 'high') {
-	    push @to_write, $effect_addresses{$effect}->[2];
-	    push @to_write, $effect_addresses{$effect}->[1];
-	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
+          push @to_write, getEffectAddresses( $effect, 2, 1 );
+          $last_fired{$effect} = time();
+          #print "fire: $effect, $state\n";
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
-	    # don't shut off unless the effect was fired more than 40ms ago.
-	    #print "off from low\n";
-	    push @to_write, $effect_addresses{$effect}->[2];
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[2];
-            #print "fire: $effect, $state\n";
+          # don't shut off unless the effect was fired more than 40ms ago.
+          #print "off from low\n";
+          push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
+          #print "fire: $effect, $state\n";
 	} else {
 	  return;
         }
     } elsif($effect_state{$effect} eq 'high') {
 	# high effect is on.
 	if($state eq 'low') {
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[3];
-	    $last_fired{$effect} = time();
-            print "fire: $effect, $state\n";
+          push @to_write, getEffectAddresses( $effect, 0, 0 );
+          $last_fired{$effect} = time();
+          print "fire: $effect, $state\n";
 	} elsif($state eq 'high') {
 	    # do nothing.
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
-	    #print "off from high\n";
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[2];
-	    push @to_write, $effect_addresses{$effect}->[0];
-	    push @to_write, $effect_addresses{$effect}->[2];
-
-            #print "fire: $effect, $state\n";
+          #print "off from high\n";
+          push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
+          #print "fire: $effect, $state\n";
 	} else {
 	  return;
         }
     }
 
     $effect_state{$effect} = $state;
+}
+
+
+sub getEffectAddresses {
+  my $effect = shift;
+  return map {  $effect_addresses{$effect}->[$_] } @_;
 }
 
 sub DESTROY {
