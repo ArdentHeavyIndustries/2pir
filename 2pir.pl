@@ -3,10 +3,10 @@
 use strict;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
-use FakePort;
+#use FakePort;
 
-#my $if0 = new Device::SerialPort('/dev/ttyS0', 0);
-my $if0 = new FakePort("./test-io.out");
+my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0);
+#my $if0 = new FakePort("./test-io.out");
 
 $if0->baudrate(19200);
 $if0->parity("odd");
@@ -68,7 +68,7 @@ my %last_fired;
 my %sensor_current;
 
 # how high to fire?
-my $high_threshold = 50;
+my $high_threshold = 80;
 my $low_threshold = 200;  #for now, this is so high that the low effect never happens.
 my $min_firing_time = .200;  #100ms
 
