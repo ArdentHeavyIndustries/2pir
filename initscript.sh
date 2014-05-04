@@ -2,7 +2,7 @@
 
 ## Fill in name of program here.
 PROG="2pir"
-PROG_PATH="/var/projects/2pir/2pir.pl" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
+PROG_PATH="/var/projects/2pir" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
 PROG_ARGS="" 
 PID_PATH="/var/run/"
 
@@ -13,8 +13,8 @@ start() {
         exit 1
     else
         ## Change from /dev/null to something like /var/log/$PROG if you want to save output.
-			mv /var/log/$PROG.log.0 /var/log/$PROG.log.1
-			mv /var/log/$PROG.log /var/log/$PROG.log.0
+			mv /var/log/$PROG.log.0 /var/log/$PROG.log.1 2>&1 > /dev/null
+			mv /var/log/$PROG.log /var/log/$PROG.log.0 2>&1 > /dev/null
             $PROG_PATH/$PROG $PROG_ARGS 2>&1 >/var/log/$PROG.log &
         echo "$PROG started"
         touch "$PID_PATH/$PROG.pid"
