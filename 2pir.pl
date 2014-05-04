@@ -1,33 +1,33 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
+
+# This script requires the libdevice-serialport-perl package.
 
 use strict;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
+use Getopt::Long;
+use Data::Dumper;
 
-my $if0 = new Device::SerialPort('/dev/ttyS0', 0);
+my $verbose;
+GetOptions(
+    'v|verbose' => \$verbose,
+);
 
-$if0->baudrate(19200);
-$if0->parity("odd");
-$if0->databits(8);
-$if0->stopbits(2);
-$if0->handshake('none');
+my $if = new Device::SerialPort('/dev/ttyUSB0', 0) or die "Cannot open /dev/ttyUSB0: $!";
 
-die "$!" unless $if0->write_settings;
+if( $verbose ) {
+    $if->debug(1);
+}
+$if->baudrate(19200);
+$if->parity("odd");
+$if->databits(8);
+$if->stopbits(2);
+$if->handshake('none');
 
-#my $if1 = new Device::SerialPort('/dev/ttyS1', 0);
-#
-#$if1->baudrate(19200);
-#$if1->parity("odd");
-#$if1->databits(8);
-#$if1->stopbits(2);
-#$if1->handshake('none');
-#
-#die "$!" unless $if1->write_settings;
+die "$!" unless $if->write_settings;
 
 # sensor reading blocky things.
-my @sensors1 = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1);
-#my @sensors0a = (17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,32);
-#my @sensors0b = (33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,48);
+my @sensors = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1);
 
 my %sensor_addresses = (
 			1 => 0,
@@ -47,40 +47,6 @@ my %sensor_addresses = (
 			15 => 14,
 			16 => 15,
 );
-##			17 => 0,
-##			18 => 1,
-##			19 => 2,
-##			20 => 3,
-##			21 => 4,
-##			22 => 5,
-##			23 => 6,
-##			24 => 7,
-##			25 => 8,
-##			26 => 9,
-##			27 => 10,
-##			28 => 11,
-##			29 => 12,
-##			30 => 13,
-##			31 => 14,
-##			32 => 15,
-
-##			33 => 16,
-##			34 => 17,
-##			35 => 18,
-##			36 => 19,
-##			37 => 20,
-##			38 => 21,
-##			39 => 22,
-##			40 => 23,
-##			41 => 24,
-##			42 => 25,
-##			43 => 26,
-##			44 => 27,
-##			45 => 28,
-##			46 => 29,
-##			47 => 30,
-##			48 => 31,
-##			);
 
 my %sensor_groups = (
 		     1 => [1,17,18],
@@ -115,7 +81,7 @@ my %effect_addresses = (
 		     5 => [48,49,50,51],
 		     6 => [52,53,54,55],
 		     7 => [56,57,58,59],
-		     16 => [60,61,62,63],
+                     16 => [60,61,62,63],
 		     9 => [64,65,66,67],
 		     10 => [68,69,70,71],
 		     11 => [72,73,74,75],
@@ -136,17 +102,17 @@ my %last_fired;
 my %sensor_current;
 
 # how high to fire?
-my $high_threshold = 50;
+my $high_threshold = 80;
 my $low_threshold = 200;  #for now, this is so high that the low effect never happens.
 my $min_firing_time = .200;  #100ms
+
+my $i = 0;
 
 # turn everything off.
 foreach my $effect (keys %effect_addresses) {
   print "2pir: turning off $effect on startup\n";
-  fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
+  burninate_motherfuckers($effect, 'off');
 }
-
-my $i = 0;
 
 my $last_time = time();
 my %timed;
@@ -154,64 +120,49 @@ my $exit = 0;
 my @to_write;
 my $last_batch = 'b';
 while(!$exit) {
-    # my @read_sensors0;
-    my @read_sensors1 = @sensors1;
+    my @read_sensors = @sensors;
 
     $i++;
     
-    # jankity...
-    # if($last_batch eq 'a') {
-    #   @read_sensors0 = @sensors0b;
-    #   $last_batch = 'b';
-    # } else {
-    #   @read_sensors0 = @sensors0a;
-    #   $last_batch = 'a';
-    # }
-    
     # translate sensor ids into sensor addresses.
-    # my @write_sensors0 = map { $sensor_addresses{$_} } @read_sensors0;
-    my @write_sensors1 = map { $sensor_addresses{$_} } @read_sensors1;
+    my @write_sensors = map { $sensor_addresses{$_} } @read_sensors;
     
     # write whatever needs it between read cycles
     if(@to_write) {
-	#print "********** write: " . join(',', @to_write) . "\n";
-	$if0->write(pack('C*', @to_write));
-	$if0->read(255);
+	if( $verbose ) {
+            print "********** write: " . join(',', @to_write) . "\n";
+        }
+	$if->write(pack('C*', @to_write));
+	$if->read(255);
 	undef @to_write;
     }
     
     # send the reads.
-    # $if0->write(pack('C*', @write_sensors0));
-    $if0->write(pack('C*', @write_sensors1));
+    $if->write(pack('C*', @write_sensors));
     
-    # pop @read_sensors0; #remove that last discarded value.
-    pop @read_sensors1;
+    #remove that last discarded value.
+    pop @read_sensors;
     
-    my $first0 = 1;
-    my $first1 = 1;
+    my $first = 1;
 
-
-    
-    while(@read_sensors1) {
-	#   my ($count0, $raw_read0) = $if0->read(255);
-	my ($count1, $raw_read1) = $if0->read(255);
+    while(@read_sensors) {
+	my ($count, $raw_read) = $if->read(255);
 	
-	next unless ($count1);
+	unless ($count) {
+            next;
+        }
 	
-	# jankity...
-	my $pick = 1;
-	foreach my $read ($raw_read1) {
+	foreach my $read ($raw_read) {
 	    foreach my $value (unpack('C*', $read)) {
 		my $curr;
-		if($first1) {
-		    undef $first1;
+		if($first) {
+		    undef $first;
 		    next;
 		}
 		
-		$curr = shift(@read_sensors1);
+		$curr = shift(@read_sensors);
 
 		push @{$timed{$curr}}, { val => $value, time => time() };
-#		print "$value\n" if $curr == 8;
 		
 		# trim @timed
 		if(scalar(@{$timed{$curr}}) > 35) {
@@ -223,40 +174,47 @@ while(!$exit) {
 		# if the value is high enough for low effect, we can assume it's correct.
 		if($value >= $high_threshold) {
 		    # high effect start firing
-		    #print "high start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'high');
+		    if( $verbose ) {
+                        print "high start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
+		        print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+                    }
+		    burninate_motherfuckers($curr, 'high');
 		    next;
 		}
 				
 		# if the value is high enough for low effect, we can assume it's correct.
 		if($value >= $low_threshold + 8) {
 		    # low effect start firing (hysteresis)
-		    #print "low start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
+		    if( $verbose ) {
+                        print "low start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
+		        print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+                    }
+		    burninate_motherfuckers($curr, 'low');
 		    next;
 		}
 		
 		# effect was already on
 		if(($value >= $low_threshold) && $effect_state{$curr} == 'low') {
 		    # low effect continue firing
-		    #print "low cont  $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
+                    if( $verbose ) {
+		        print "low cont  $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
+		        print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+                    } 
+		    burninate_motherfuckers($curr, 'low');
 		    next;
 		}
 		
-		fire_the_fucking_flamethrowers_oh_my_god($curr, 'off');
-#                print "off       $curr, val $_->{val}, tdif " . (time() - $_->{time}) . ", bl $baseline{$curr}, time $time_baseline{$curr}\n";
-#                print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
-
+		burninate_motherfuckers($curr, 'off');
+                if( $verbose ) {
+                    #print "off       $curr, val $_->{val}, tdif " . (time() - $_->{time}) . ", bl $baseline{$curr}, time $time_baseline{$curr}\n";
+                    print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+                }
 	    }
 	}
     }
 }
 
-sub fire_the_fucking_flamethrowers_oh_my_god {
+sub burninate_motherfuckers {
     my($effect, $state) = @_;
     
     # effect array offsets:
@@ -265,25 +223,21 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
     # 2 - low off
     # 3 - low on
 
-    
+    $effect_state{$effect} ||= 'off';
+
     if($effect_state{$effect} eq 'off') {
 	if($state eq 'low') {
 	    push @to_write, $effect_addresses{$effect}->[3];
 	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
 	} elsif($state eq 'high') {
 	    push @to_write, $effect_addresses{$effect}->[1];
 	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
 	} elsif($state eq 'off' && $i%100 == 0) {
 	    # this clause makes sure to turn stuff off if it should be.
 	    push @to_write, $effect_addresses{$effect}->[2];
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[2];
-            #print "fire: $effect, $state (anyway)\n";
-	    # already off.
-	    #print "off from off\n";
 	}
     } elsif($effect_state{$effect} eq 'low') {
 	# low effect is on.
@@ -293,17 +247,15 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	    push @to_write, $effect_addresses{$effect}->[2];
 	    push @to_write, $effect_addresses{$effect}->[1];
 	    $last_fired{$effect} = time();
-            #print "fire: $effect, $state\n";
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
 	    # don't shut off unless the effect was fired more than 40ms ago.
-	    #print "off from low\n";
+	    print "off from low\n";
 	    push @to_write, $effect_addresses{$effect}->[2];
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[2];
-            #print "fire: $effect, $state\n";
 	} else {
-	  return;
+	    return;
         }
     } elsif($effect_state{$effect} eq 'high') {
 	# high effect is on.
@@ -311,7 +263,6 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[3];
 	    $last_fired{$effect} = time();
-            print "fire: $effect, $state\n";
 	} elsif($state eq 'high') {
 	    # do nothing.
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
@@ -320,19 +271,19 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	    push @to_write, $effect_addresses{$effect}->[2];
 	    push @to_write, $effect_addresses{$effect}->[0];
 	    push @to_write, $effect_addresses{$effect}->[2];
-
-            #print "fire: $effect, $state\n";
 	} else {
-	  return;
+	    return;
         }
     }
-    
+    if( $verbose ) {
+        print "fire: $effect, $state\n";
+    }
     $effect_state{$effect} = $state;
 }
 
 sub DESTROY {
   warn "Attempting to turn off fire before exiting...\n";
   foreach my $effect (keys %effect_addresses) {
-    fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
+    burninate_motherfuckers($effect, 'off');
   }
 }
