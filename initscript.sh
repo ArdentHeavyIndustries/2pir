@@ -15,7 +15,7 @@ start() {
         ## Change from /dev/null to something like /var/log/$PROG if you want to save output.
 			mv /var/log/$PROG.log.0 /var/log/$PROG.log.1 2>&1 > /dev/null
 			mv /var/log/$PROG.log /var/log/$PROG.log.0 2>&1 > /dev/null
-            $PROG_PATH/$PROG $PROG_ARGS > /var/log/some.log 2>&1 > /dev/null &
+            $PROG_PATH/$PROG $PROG_ARGS > /var/log/$PROG.log 2>&1 > /dev/null &	
         echo "$PROG started"
         touch "$PID_PATH/$PROG.pid"
     fi
