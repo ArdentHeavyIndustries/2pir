@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Fill in name of program here.
-PROG="2pir"
+PROG="2pir.pl"
 PROG_PATH="/var/projects/2pir" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
 PROG_ARGS="" 
 PID_PATH="/var/run/"
