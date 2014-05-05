@@ -189,11 +189,11 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 3 );
           $last_fired{$effect} = time();
-          #print "fire: $effect, $state\n";
+          print "fire: $effect, $state\n";
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 1 );
           $last_fired{$effect} = time();
-          #print "fire: $effect, $state\n";
+          print "fire: $effect, $state\n";
 	} elsif($state eq 'off' && $i%100 == 0) {
           # this clause makes sure to turn stuff off if it should be.
           push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
@@ -228,7 +228,7 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
           #print "off from high\n";
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
-          #print "fire: $effect, $state\n";
+          print "fire: $effect, $state\n";
 	} else {
 	  return;
         }
