@@ -5,7 +5,7 @@ use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 #use FakePort;
 
-my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); # Change to /dev/ttyS0 for direct serial
+my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #  Change to /dev/ttyS0 for direct serial
 #my $if0 = new FakePort("./test-io.out");
 
 $if0->baudrate(19200);
