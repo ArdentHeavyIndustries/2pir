@@ -8,6 +8,12 @@ use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 #use FakePort;
 
+my %verbosity = (
+    1 => 'ERROR',
+    2 => 'INFO',
+    3 => 'DEBUG',
+);
+
 my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
 #my $if0 = new FakePort("./test-io.out");
 
@@ -17,7 +23,10 @@ $if0->databits(8);
 $if0->stopbits(2);
 $if0->handshake('none');
 
-die "$!" unless $if0->write_settings;
+unless( $if0->write_settings ) {
+    error("$!");
+    exit 1;
+}
 
 # sensor reading blocky things.
 my @sensors1 = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1);
@@ -75,13 +84,17 @@ my $high_threshold = 80;
 my $low_threshold = 200;  #for now, this is so high that the low effect never happens.
 my $min_firing_time = .200;  #100ms
 
+info("High Threshold:\t$high_threshold");
+info("Low Threshold:\t$low_threshold");
+info("Min Firing Time:\t$min_firing_time");
+
 my $i = 0;
 
 # turn everything off.
 foreach my $effect (keys %effect_addresses) {
   $effect_state{$effect} ||= 'off';
-  debug("2pir: turning off $effect on startup");
-  fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
+  info("2pir: turning off $effect on startup");
+  burninate_motherfuckers_omg($effect, 'off');
 }
 
 my $last_time = time();
@@ -145,7 +158,7 @@ while(!$exit) {
 		    # high effect start firing
 		    debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'high');
+		    burninate_motherfuckers_omg($curr, 'high');
                 }
 				
 		# if the value is high enough for low effect, we can assume it's correct.
@@ -154,7 +167,7 @@ while(!$exit) {
 
 		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
+		    burninate_motherfuckers_omg($curr, 'low');
 		    next;
 		}
 		
@@ -163,12 +176,12 @@ while(!$exit) {
 		    # low effect continue firing
 		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
+		    burninate_motherfuckers_omg($curr, 'low');
 		    next;
 		}
 		
                 else {
-		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'off');
+		    burninate_motherfuckers_omg($curr, 'off');
                     debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
                 }
 	    }
@@ -176,7 +189,7 @@ while(!$exit) {
     }
 }
 
-sub fire_the_fucking_flamethrowers_oh_my_god {
+sub burninate_motherfuckers_omg {
     my($effect, $state) = @_;
 
     # effect array offsets:
@@ -185,41 +198,41 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
     # 2 - low off
     # 3 - low on
 
-    debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
+    info(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
 	if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 3 );
           $last_fired{$effect} = time();
-          debug("Turning on $effect");
+          info("Turning on $effect");
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 1 );
           $last_fired{$effect} = time();
-          debug("Turning on $effect");
+          info("Turning on $effect");
 	} elsif($state eq 'off') {
           if($i%100 == 0) {
             # this clause makes sure to turn stuff off if it should be.
             push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-            debug("Turning off $effect");
+            info("Turning off $effect");
 	  } else {
-            debug("$effect is already off");
+            info("$effect is already off");
           }
         }
     } elsif($effect_state{$effect} eq 'low') {
 	# low effect is on.
 	if($state eq 'low') {
-          debug("$effect is already low");
+          info("$effect is already low");
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 2, 1 );
           $last_fired{$effect} = time();
-          debug("Increasing intensity of $effect");
+          info("Increasing intensity of $effect");
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
           # don't shut off unless the effect was fired more than 40ms ago.
           #print "off from low\n";
           push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-          debug("Shutting off $effect");
+          info("Shutting off $effect");
 	} else {
-          debug("Not enough time has elapsed to shut down $effect");
+          info("Not enough time has elapsed to shut down $effect");
 	  return;
         }
     } elsif($effect_state{$effect} eq 'high') {
@@ -227,32 +240,51 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 0, 0 );
           $last_fired{$effect} = time();
-          debug("Decreasing intensity of $effect");
+          info("Decreasing intensity of $effect");
 	} elsif($state eq 'high') {
-	  debug("$effect is already high");
+	  info("$effect is already high");
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
           #print "off from high\n";
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
-          debug("Shutting off $effect");
+          info("Shutting off $effect");
 	} else {
-          debug("Not enough time has elapsed to shut down $effect");
+          info("Not enough time has elapsed to shut down $effect");
           return;
         }
     }
 
-    debug("Setting $effect to $state");
+    info("Setting $effect to $state");
     $effect_state{$effect} = $state;
+}
+
+sub error {
+    my $line = shift;
+    logit($line,1)
+}
+
+sub info {
+    my $line = shift;
+    logit($line,2);
 }
 
 sub debug {
     my $line = shift;
+    logit($line,3);
+}
+
+sub logit {
+    my $line  = shift;
+    my $level = shift;
+
     my ($sec,$min,$hour,$day,$mon,$year,undef,undef,undef)=localtime(time);
     my $timestamp = sprintf ( "%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$day,$hour,$min,$sec);
-    my $message = sprintf("[%s] %s\n", $timestamp, $line);
+    my $message = sprintf("[%s] %s: %s\n", $timestamp, $verbosity{$level}, $line);
 
-    print $message;
+    if( $level < 3 ) {
+        print $message;
+    }
 
-    open(LOG, ">>/var/log/2pir/debug.log") or die "Could not open debug.log: $!";
+    open(LOG, ">>/var/log/2pir/output.log") or die "Could not open debug.log: $!";
     printf LOG $message;
     close(LOG);
 }
@@ -263,8 +295,9 @@ sub getEffectAddresses {
 }
 
 sub DESTROY {
-  warn "Attempting to turn off fire before exiting...\n";
+  info("Turning off effects on shutdown");
   foreach my $effect (keys %effect_addresses) {
-    fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
+    burninate_motherfuckers_omg($effect, 'off');
   }
 }
+
