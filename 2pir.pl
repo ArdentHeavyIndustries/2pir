@@ -80,7 +80,7 @@ my $i = 0;
 # turn everything off.
 foreach my $effect (keys %effect_addresses) {
   $effect_state{$effect} ||= 'off';
-  print "2pir: turning off $effect on startup\n";
+  debug("2pir: turning off $effect on startup");
   fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
 }
 
@@ -100,7 +100,7 @@ while(!$exit) {
 
     # write whatever needs it between read cycles
     if(@to_write) {
-	#print "********** write: " . join(',', @to_write) . "\n";
+	debug("********** write: " . join(',', @to_write) );
 	$if0->write(pack('C*', @to_write));
 	$if0->read(255);
 	undef @to_write;
@@ -120,12 +120,11 @@ while(!$exit) {
 	
 	next unless ($count1);
 	
-	# jankity...
-	my $pick = 1;
 	foreach my $read ($raw_read1) {
 	    foreach my $value (unpack('C*', $read)) {
 		my $curr;
 		if($first1) {
+                    debug("Discarding first value");
 		    undef $first1;
 		    next;
 		}
@@ -133,7 +132,6 @@ while(!$exit) {
 		$curr = shift(@read_sensors1);
 
 		push @{$timed{$curr}}, { val => $value, time => time() };
-#		print "$value\n" if $curr == 8;
 		
 		# trim @timed
 		if(scalar(@{$timed{$curr}}) > 35) {
@@ -145,16 +143,17 @@ while(!$exit) {
 		# if the value is high enough for low effect, we can assume it's correct.
 		if($value >= $high_threshold) {
 		    # high effect start firing
-		    #print "high start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+		    debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
+		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
 		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'high');
                 }
 				
 		# if the value is high enough for low effect, we can assume it's correct.
 		elsif($value >= $low_threshold + 8) {
 		    # low effect start firing (hysteresis)
-		    #print "low start $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+
+		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
+		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
 		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
 		    next;
 		}
@@ -162,18 +161,16 @@ while(!$exit) {
 		# effect was already on
 		elsif(($value >= $low_threshold) && $effect_state{$curr} == 'low') {
 		    # low effect continue firing
-		    #print "low cont  $curr, val $value, tdif " . (time() - $_->{time}) . "\n";
-		    #print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
+		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
+		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
 		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'low');
 		    next;
 		}
 		
                 else {
-		fire_the_fucking_flamethrowers_oh_my_god($curr, 'off');
-#                print "off       $curr, val $_->{val}, tdif " . (time() - $_->{time}) . ", bl $baseline{$curr}, time $time_baseline{$curr}\n";
-#                print "values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) . "\n";
-              }
-
+		    fire_the_fucking_flamethrowers_oh_my_god($curr, 'off');
+                    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
+                }
 	    }
 	}
     }
