@@ -1,4 +1,6 @@
 #!/usr/bin/perl -w
+
+# Required package: libdevice-serialport-perl
 $| = 1;
 
 use strict;
@@ -6,7 +8,7 @@ use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 #use FakePort;
 
-my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #  Change to /dev/ttyS0 for direct serial
+my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
 #my $if0 = new FakePort("./test-io.out");
 
 $if0->baudrate(19200);
@@ -73,13 +75,14 @@ my $high_threshold = 80;
 my $low_threshold = 200;  #for now, this is so high that the low effect never happens.
 my $min_firing_time = .200;  #100ms
 
+my $i = 0;
+
 # turn everything off.
 foreach my $effect (keys %effect_addresses) {
+  $effect_state{$effect} ||= 'off';
   print "2pir: turning off $effect on startup\n";
   fire_the_fucking_flamethrowers_oh_my_god($effect, 'off');
 }
-
-my $i = 0;
 
 my $last_time = time();
 my %timed;
@@ -185,37 +188,41 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
     # 2 - low off
     # 3 - low on
 
+    debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
 	if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 3 );
           $last_fired{$effect} = time();
-          print "fire: $effect, $state\n";
+          debug("Turning on $effect");
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 1 );
           $last_fired{$effect} = time();
-          print "fire: $effect, $state\n";
-	} elsif($state eq 'off' && $i%100 == 0) {
-          # this clause makes sure to turn stuff off if it should be.
-          push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-          #print "fire: $effect, $state (anyway)\n";
-          # already off.
-          #print "off from off\n";
-	}
+          debug("Turning on $effect");
+	} elsif($state eq 'off') {
+          if($i%100 == 0) {
+            # this clause makes sure to turn stuff off if it should be.
+            push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
+            debug("Turning off $effect");
+	  } else {
+            debug("$effect is already off");
+          }
+        }
     } elsif($effect_state{$effect} eq 'low') {
 	# low effect is on.
 	if($state eq 'low') {
-          # do nothing.
+          debug("$effect is already low");
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 2, 1 );
           $last_fired{$effect} = time();
-          #print "fire: $effect, $state\n";
+          debug("Increasing intensity of $effect");
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
           # don't shut off unless the effect was fired more than 40ms ago.
           #print "off from low\n";
           push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-          #print "fire: $effect, $state\n";
+          debug("Shutting off $effect");
 	} else {
+          debug("Not enough time has elapsed to shut down $effect");
 	  return;
         }
     } elsif($effect_state{$effect} eq 'high') {
@@ -223,21 +230,35 @@ sub fire_the_fucking_flamethrowers_oh_my_god {
 	if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 0, 0 );
           $last_fired{$effect} = time();
-          print "fire: $effect, $state\n";
+          debug("Decreasing intensity of $effect");
 	} elsif($state eq 'high') {
-	    # do nothing.
+	  debug("$effect is already high");
 	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
           #print "off from high\n";
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
-          print "fire: $effect, $state\n";
+          debug("Shutting off $effect");
 	} else {
-	  return;
+          debug("Not enough time has elapsed to shut down $effect");
+          return;
         }
     }
 
+    debug("Setting $effect to $state");
     $effect_state{$effect} = $state;
 }
 
+sub debug {
+    my $line = shift;
+    my ($sec,$min,$hour,$day,$mon,$year,undef,undef,undef)=localtime(time);
+    my $timestamp = sprintf ( "%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$day,$hour,$min,$sec);
+    my $message = sprintf("[%s] %s\n", $timestamp, $line);
+
+    print $message;
+
+    open(LOG, ">>/var/log/2pir/debug.log") or die "Could not open debug.log: $!";
+    printf LOG $message;
+    close(LOG);
+}
 
 sub getEffectAddresses {
   my $effect = shift;
