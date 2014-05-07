@@ -6,7 +6,7 @@ $| = 1;
 use strict;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
-#use FakePort;
+use FakePort;
 
 my %verbosity = (
     1 => 'ERROR',
@@ -14,8 +14,19 @@ my %verbosity = (
     3 => 'DEBUG',
 );
 
-my $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
-#my $if0 = new FakePort("./test-io.out");
+my $fake;
+my $if0;
+
+if( $fake ) {
+    $if0 = new FakePort("./test-io.out");
+} else {
+    $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
+}
+
+unless( $if0 ) {
+    error("Could not initiate serial port connection");
+    exit(1);
+}
 
 $if0->baudrate(19200);
 $if0->parity("odd");
@@ -24,8 +35,8 @@ $if0->stopbits(2);
 $if0->handshake('none');
 
 unless( $if0->write_settings ) {
-    error("$!");
-    exit 1;
+    error("Could not write settings: $!");
+    exit(1);
 }
 
 # sensor reading blocky things.
