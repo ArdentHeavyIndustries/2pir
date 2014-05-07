@@ -5,7 +5,7 @@ PROG="2pir.pl"
 PROG_PATH="/var/projects/2pir" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
 PID_PATH="/var/run/"
 LOG_PATH="/var/log/2pir"
-PROG_ARGS="--log $LOG_PATH/app.log"
+PROG_ARGS=""
 
 start() {
     if [ -e "$PID_PATH/$PROG.pid" ]; then
