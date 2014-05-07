@@ -12,7 +12,7 @@ sub new {
     my $file  = shift;
 
     open( DATA, $file ) or
-      die "could not opend test file $file becoue $!";
+      die "could not open test file $file: $!";
 
     my $self  = { file => \*DATA, 'print' => 0 };
 
@@ -21,7 +21,7 @@ sub new {
 }
 
 
-# dumby methouds to maintain interface
+# dummy methods to maintain interface
 sub baudrate  {}
 sub parity    {}
 sub databits  {}
@@ -48,7 +48,7 @@ sub write {
   else {
     my $expected = $self->getLine();
 
-    die "did not get expetced line\nG  $got\nE  $expected\n"
+    die "did not get expected line\nG  $got\nE  $expected\n"
       if ( $got ne $expected );
   }
 
@@ -85,7 +85,7 @@ sub read {
     my $line = $self->getLine();
 
     $line =~ /sending read: ([\d:]+)/ or
-      die "could not parce read line:\n  $line";
+      die "could not parse read line:\n  $line";
 
     @data = split /:/, $1;
 
