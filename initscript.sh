@@ -5,20 +5,31 @@ PROG="2pir.pl"
 PROG_PATH="/var/projects/2pir" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
 PROG_ARGS="" 
 PID_PATH="/var/run/"
+LOG_PATH="/var/log/2pir";
 
 start() {
     if [ -e "$PID_PATH/$PROG.pid" ]; then
         ## Program is running, exit with error.
         echo "Error! $PROG is currently running!" 1>&2
         exit 1
-    else
-        ## Change from /dev/null to something like /var/log/$PROG if you want to save output.
-			mv /var/log/2pir.log.0 /var/log/2pir.log.1
-			mv /var/log/2pir.log /var/log/2pir.log.0
-            $PROG_PATH/$PROG $PROG_ARGS > /var/log/2pir.log &	
-        echo "$PROG started"
-        touch "$PID_PATH/$PROG.pid"
     fi
+
+    if [ ! -e $LOG_PATH ]; then
+        echo "Error! $LOG_PATH is missing" 1>&2
+        exit 1
+    fi
+
+    CURRENT_LOG = "$LOG_PATH/daemon.log"
+
+    if [ -e $CURRENT_LOG ]; then
+        ARCHIVED_LOG = `date +$LOG_PATH/daemon.%Y%m%d%H%M%S.log`
+        echo "Archiving current log to $ARCHIVED_LOG"
+        mv $CURRENT_LOG $ARCHIVED_LOG
+    }
+
+    $PROG_PATH/$PROG $PROG_ARGS > $CURRENT_LOG 2>&1 > /dev/null &	
+    echo "$PROG started"
+    touch "$PID_PATH/$PROG.pid"
 }
 
 stop() {
@@ -58,7 +69,7 @@ case "$1" in
         exit 0
     ;;
     **)
-        echo "Usage: $0 {start|stop|reload}" 1>&2
+        echo "Usage: $0 {start|stop|restart}" 1>&2
         exit 1
     ;;
 esac
