@@ -6,6 +6,7 @@ use strict;
 use Getopt::Long;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
+use Config::Inifiles;
 use FakePort;
 
 my %verbosity = (
@@ -14,16 +15,39 @@ my %verbosity = (
     3 => 'DEBUG',
 );
 
-my $fake;
-my $logfile;
+my %OPTIONS;
+my %CONFIG;
 
-GetOptions(
-    'f|fake=s'   => \$fake,
-    'l|log=s'  => \$logfile,
+GetOptions(\%OPTIONS,
+    'fake=s',
+    'logfile=s',
+    'high_threshold=s',
+    'low_threshold=s',
+    'min_firing_time=s',
+    'fakeport=s',
+    'config=s',
 );
 
+$OPTIONS{'config'} ||= '2pir.ini';
+
+my $ini = Config::IniFiles->new( -file => "2pir.ini" );
+
+$CONFIG{'high_threshold'}  = $ini->val('2pir','high_threshold');
+$CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
+$CONFIG{'min_firing_time'} = $ini->val('2pir','min_firing_time');
+$CONFIG{'logfile'}         = $ini->val('2pir','logfile');
+
+foreach my $OPTION ( keys %OPTIONS ) {
+    if ($CONFIG{$OPTION}) {
+        debug("Overriding $OPTION: $CONFIG{$OPTION}");
+    }
+    $CONFIG{$OPTION} = $OPTIONS{$OPTION};
+}
+
+map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
+  
 my $if0;
-if( $fake ) {
+if( $CONFIG{'fake'} ) {
     $if0 = new FakePort("./test-io.out");
 } else {
     $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
@@ -96,15 +120,6 @@ my %last_fired;
 # store the sensor's current value.
 my %sensor_current;
 
-# how high to fire?
-my $high_threshold = 80;
-my $low_threshold = 200;  #for now, this is so high that the low effect never happens.
-my $min_firing_time = .200;  #100ms
-
-info("High Threshold:\t$high_threshold");
-info("Low Threshold:\t$low_threshold");
-info("Min Firing Time:\t$min_firing_time");
-
 my $i = 0;
 
 # turn everything off.
@@ -171,7 +186,7 @@ while(!$exit) {
 		}
 
 		# if the value is high enough for low effect, we can assume it's correct.
-		if($value >= $high_threshold) {
+		if($value >= $CONFIG{'high_threshold'}) {
 		    # high effect start firing
 		    debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
@@ -179,7 +194,7 @@ while(!$exit) {
                 }
 				
 		# if the value is high enough for low effect, we can assume it's correct.
-		elsif($value >= $low_threshold + 8) {
+		elsif($value >= $CONFIG{'low_threshold'} + 8) {
 		    # low effect start firing (hysteresis)
 
 		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
@@ -189,7 +204,7 @@ while(!$exit) {
 		}
 		
 		# effect was already on
-		elsif(($value >= $low_threshold) && $effect_state{$curr} == 'low') {
+		elsif(($value >= $CONFIG{'low_threshold'}) && $effect_state{$curr} == 'low') {
 		    # low effect continue firing
 		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
@@ -243,7 +258,7 @@ sub burninate_motherfuckers_omg {
           push @to_write, getEffectAddresses( $effect, 2, 1 );
           $last_fired{$effect} = time();
           info("Increasing intensity of $effect");
-	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
+	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
           # don't shut off unless the effect was fired more than 40ms ago.
           #print "off from low\n";
           push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
@@ -260,7 +275,7 @@ sub burninate_motherfuckers_omg {
           info("Decreasing intensity of $effect");
 	} elsif($state eq 'high') {
 	  info("$effect is already high");
-	} elsif(($last_fired{$effect} + $min_firing_time) <= time()) {
+	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
           #print "off from high\n";
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
           info("Shutting off $effect");
@@ -296,12 +311,12 @@ sub logit {
     my $timestamp = sprintf ( "%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$day,$hour,$min,$sec);
     my $message = sprintf("[%s] %s: %s\n", $timestamp, $verbosity{$level}, $line);
 
-    if( $logfile ) {
+    if( $CONFIG{'logfile'} ) {
         if( $level < 3 ) {
             print $message;
         }
 
-        open(LOG, ">>$logfile") or die "Could not open $logfile: $!";
+        open(LOG, ">>$CONFIG{'logfile'}") or die "Could not open $CONFIG{'logfile'}: $!";
         printf LOG $message;
         close(LOG);
     } else {
