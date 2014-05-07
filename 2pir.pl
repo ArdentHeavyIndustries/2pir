@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
 
-# Required package: libdevice-serialport-perl
 $| = 1;
 
 use strict;
+use Getopt::Long;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 use FakePort;
@@ -15,8 +15,14 @@ my %verbosity = (
 );
 
 my $fake;
-my $if0;
+my $logfile;
 
+GetOptions(
+    'f|fake=s'   => \$fake,
+    'l|log=s'  => \$logfile,
+);
+
+my $if0;
 if( $fake ) {
     $if0 = new FakePort("./test-io.out");
 } else {
@@ -102,9 +108,9 @@ info("Min Firing Time:\t$min_firing_time");
 my $i = 0;
 
 # turn everything off.
+info("2pir: turning off all effects on startup");
 foreach my $effect (keys %effect_addresses) {
   $effect_state{$effect} ||= 'off';
-  info("2pir: turning off $effect on startup");
   burninate_motherfuckers_omg($effect, 'off');
 }
 
@@ -209,7 +215,7 @@ sub burninate_motherfuckers_omg {
     # 2 - low off
     # 3 - low on
 
-    info(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
+    debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
 	if($state eq 'low') {
@@ -243,7 +249,7 @@ sub burninate_motherfuckers_omg {
           push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
           info("Shutting off $effect");
 	} else {
-          info("Not enough time has elapsed to shut down $effect");
+          info("Not enough time has elapsed to shut down $effect, skipping");
 	  return;
         }
     } elsif($effect_state{$effect} eq 'high') {
@@ -259,12 +265,11 @@ sub burninate_motherfuckers_omg {
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
           info("Shutting off $effect");
 	} else {
-          info("Not enough time has elapsed to shut down $effect");
+          info("Not enough time has elapsed to shut down $effect, skipping");
           return;
         }
     }
 
-    info("Setting $effect to $state");
     $effect_state{$effect} = $state;
 }
 
@@ -291,13 +296,17 @@ sub logit {
     my $timestamp = sprintf ( "%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$day,$hour,$min,$sec);
     my $message = sprintf("[%s] %s: %s\n", $timestamp, $verbosity{$level}, $line);
 
-    if( $level < 3 ) {
-        print $message;
-    }
+    if( $logfile ) {
+        if( $level < 3 ) {
+            print $message;
+        }
 
-    open(LOG, ">>/var/log/2pir/output.log") or die "Could not open debug.log: $!";
-    printf LOG $message;
-    close(LOG);
+        open(LOG, ">>$logfile") or die "Could not open $logfile: $!";
+        printf LOG $message;
+        close(LOG);
+    } else {
+        print $message;
+    }    
 }
 
 sub getEffectAddresses {
@@ -306,7 +315,7 @@ sub getEffectAddresses {
 }
 
 sub DESTROY {
-  info("Turning off effects on shutdown");
+  info("Turning off all effects on shutdown");
   foreach my $effect (keys %effect_addresses) {
     burninate_motherfuckers_omg($effect, 'off');
   }

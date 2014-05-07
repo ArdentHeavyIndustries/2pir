@@ -3,9 +3,9 @@
 ## Fill in name of program here.
 PROG="2pir.pl"
 PROG_PATH="/var/projects/2pir" ## Not need, but sometimes helpful (if $PROG resides in /opt for example).
-PROG_ARGS="" 
 PID_PATH="/var/run/"
-LOG_PATH="/var/log/2pir";
+LOG_PATH="/var/log/2pir"
+PROG_ARGS="--log $LOG_PATH/app.log"
 
 start() {
     if [ -e "$PID_PATH/$PROG.pid" ]; then
@@ -19,15 +19,23 @@ start() {
         exit 1
     fi
 
-    CURRENT_LOG = "$LOG_PATH/daemon.log"
+    CURRENT_DAEMON_LOG = "$LOG_PATH/daemon.log"
 
-    if [ -e $CURRENT_LOG ]; then
+    if [ -e $CURRENT_DAEMON_LOG ]; then
         ARCHIVED_LOG = `date +$LOG_PATH/daemon.%Y%m%d%H%M%S.log`
-        echo "Archiving current log to $ARCHIVED_LOG"
-        mv $CURRENT_LOG $ARCHIVED_LOG
+        echo "Archiving current daemon log to $ARCHIVED_LOG"
+        mv $CURRENT_DAEMON_LOG $ARCHIVED_LOG
     }
 
-    $PROG_PATH/$PROG $PROG_ARGS > $CURRENT_LOG 2>&1 > /dev/null &	
+    CURRENT_APP_LOG = "$LOG_PATH/app.log"
+
+    if [ -e $CURRENT_APP_LOG ]; then
+        ARCHIVED_LOG = `date +$LOG_PATH/app.%Y%m%d%H%M%S.log`
+        echo "Archiving current daemon log to $ARCHIVED_LOG"
+        mv $CURRENT_APP_LOG $ARCHIVED_LOG
+    }
+
+    $PROG_PATH/$PROG $PROG_ARGS > $CURRENT_DAEMON_LOG 2>&1 > /dev/null &	
     echo "$PROG started"
     touch "$PID_PATH/$PROG.pid"
 }
