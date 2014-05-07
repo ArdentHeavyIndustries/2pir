@@ -188,7 +188,7 @@ while(!$exit) {
 		# if the value is high enough for low effect, we can assume it's correct.
 		if($value >= $CONFIG{'high_threshold'}) {
 		    # high effect start firing
-		    debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
+		    #debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
 		    burninate_motherfuckers_omg($curr, 'high');
                 }
@@ -247,13 +247,13 @@ sub burninate_motherfuckers_omg {
             push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
             info("Turning off $effect");
 	  } else {
-            info("$effect is already off");
+            debug("$effect is already off");
           }
         }
     } elsif($effect_state{$effect} eq 'low') {
 	# low effect is on.
 	if($state eq 'low') {
-          info("$effect is already low");
+          debug("$effect is already low");
 	} elsif($state eq 'high') {
           push @to_write, getEffectAddresses( $effect, 2, 1 );
           $last_fired{$effect} = time();
@@ -274,7 +274,7 @@ sub burninate_motherfuckers_omg {
           $last_fired{$effect} = time();
           info("Decreasing intensity of $effect");
 	} elsif($state eq 'high') {
-	  info("$effect is already high");
+	  debug("$effect is already high");
 	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
           #print "off from high\n";
           push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
