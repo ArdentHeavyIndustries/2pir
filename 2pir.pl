@@ -6,7 +6,7 @@ use strict;
 use Getopt::Long;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
-use Config::Inifiles;
+use Config::IniFiles;
 use FakePort;
 
 my %verbosity = (
