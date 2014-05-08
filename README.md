@@ -24,5 +24,9 @@ CLI Usage: 2pir.pl [--config (foo.ini)] [--high_threshold (integer)] [--low_thre
 --fake
 	Use fake serial port; useful for testing, but this functionality is not entirely finished at this time.
 
+--port
+	Address of the serial port to connect to; for example, /dev/ttyUSB0 for USB or /dev/ttyS0 for direct serial.
+	If using --fake, an arbitrary text file can be used. This defaults to /dev/ttyUSB0 ( or ./test-io.out for --fake )
+
 Requires Device-SerialPort-1.04
 Required package: libdevice-serialport-perl

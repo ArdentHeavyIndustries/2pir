@@ -24,7 +24,7 @@ GetOptions(\%OPTIONS,
     'high_threshold=s',
     'low_threshold=s',
     'min_firing_time=s',
-    'fakeport=s',
+    'port=s',
     'config=s',
 );
 
@@ -36,6 +36,7 @@ $CONFIG{'high_threshold'}  = $ini->val('2pir','high_threshold');
 $CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
 $CONFIG{'min_firing_time'} = $ini->val('2pir','min_firing_time');
 $CONFIG{'logfile'}         = $ini->val('2pir','logfile');
+$CONFIG{'port'}            = $ini->val('2pir','port');
 
 # Over-ride options from the ini file w/anything passed in via the CLI
 foreach my $OPTION ( keys %OPTIONS ) {
@@ -49,14 +50,19 @@ foreach my $OPTION ( keys %OPTIONS ) {
 $CONFIG{'high_threshold'}  ||= 80;
 $CONFIG{'low_threshold'}   ||= 200;
 $CONFIG{'min_firing_time'} ||= 0.2 # 200ms
+if( $CONFIG{'fake'} ) {
+    $CONFIG{'port'} ||= './test-io.out';
+} else {
+    $CONFIG{'port'} ||= '/dev/ttyUSB0';
+}
 
 map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
   
 my $if0;
 if( $CONFIG{'fake'} ) {
-    $if0 = new FakePort("./test-io.out");
+    $if0 = new FakePort($CONFIG{'port'});
 } else {
-    $if0 = new Device::SerialPort('/dev/ttyUSB0', 0); #Change to /dev/ttyS0 for direct serial
+    $if0 = new Device::SerialPort($CONFIG{'port'}, 0); #Change to /dev/ttyS0 for direct serial
 }
 
 unless( $if0 ) {
