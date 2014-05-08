@@ -30,19 +30,25 @@ GetOptions(\%OPTIONS,
 
 $OPTIONS{'config'} ||= '2pir.ini';
 
-my $ini = Config::IniFiles->new( -file => "2pir.ini" );
+my $ini = Config::IniFiles->new( -file => "$OPTIONS{'config'}" );
 
 $CONFIG{'high_threshold'}  = $ini->val('2pir','high_threshold');
 $CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
 $CONFIG{'min_firing_time'} = $ini->val('2pir','min_firing_time');
 $CONFIG{'logfile'}         = $ini->val('2pir','logfile');
 
+# Over-ride options from the ini file w/anything passed in via the CLI
 foreach my $OPTION ( keys %OPTIONS ) {
     if ($CONFIG{$OPTION}) {
         debug("Overriding $OPTION: $CONFIG{$OPTION}");
     }
     $CONFIG{$OPTION} = $OPTIONS{$OPTION};
 }
+
+# Set default values if necessary
+$CONFIG{'high_threshold'}  ||= 80;
+$CONFIG{'low_threshold'}   ||= 200;
+$CONFIG{'min_firing_time'} ||= 0.2 # 200ms
 
 map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
   
