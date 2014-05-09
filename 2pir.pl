@@ -47,7 +47,7 @@ foreach my $OPTION ( keys %OPTIONS ) {
 # Set default values if necessary
 $CONFIG{'high_threshold'}  ||= 80;
 $CONFIG{'low_threshold'}   ||= 200;
-$CONFIG{'min_firing_time'} ||= 0.2 # 200ms
+$CONFIG{'min_firing_time'} ||= 0.2; # 200ms
 $CONFIG{'port'} ||= '/dev/ttyUSB0';
 
 map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
