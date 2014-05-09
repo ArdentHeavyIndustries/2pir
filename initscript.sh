@@ -25,7 +25,7 @@ start() {
         ARCHIVED_LOG = `date +$LOG_PATH/daemon.%Y%m%d%H%M%S.log`
         echo "Archiving current daemon log to $ARCHIVED_LOG"
         mv $CURRENT_DAEMON_LOG $ARCHIVED_LOG
-    }
+    fi
 
     CURRENT_APP_LOG = "$LOG_PATH/app.log"
 
@@ -33,7 +33,7 @@ start() {
         ARCHIVED_LOG = `date +$LOG_PATH/app.%Y%m%d%H%M%S.log`
         echo "Archiving current daemon log to $ARCHIVED_LOG"
         mv $CURRENT_APP_LOG $ARCHIVED_LOG
-    }
+    fi
 
     $PROG_PATH/$PROG $PROG_ARGS > $CURRENT_DAEMON_LOG 2>&1 > /dev/null &	
     echo "$PROG started"
