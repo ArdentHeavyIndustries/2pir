@@ -9,9 +9,9 @@ use Time::HiRes qw (time usleep);
 use Config::IniFiles;
 
 my %verbosity = (
-    1 => 'ERROR',
-    2 => 'INFO',
-    3 => 'DEBUG',
+    0 => 'ERROR',
+    1 => 'INFO',
+    2 => 'DEBUG',
 );
 
 my %OPTIONS;
@@ -24,6 +24,7 @@ GetOptions(\%OPTIONS,
     'min_firing_time=s',
     'port=s',
     'config=s',
+    'verbose=i',
 );
 
 $OPTIONS{'config'} ||= '/etc/2pir.ini';
@@ -292,22 +293,24 @@ sub burninate_motherfuckers_omg {
 
 sub error {
     my $line = shift;
-    logit($line,1)
+    logit($line,0)
 }
 
 sub info {
     my $line = shift;
-    logit($line,2);
+    logit($line,1);
 }
 
 sub debug {
     my $line = shift;
-    logit($line,3);
+    logit($line,2);
 }
 
 sub logit {
     my $line  = shift;
     my $level = shift;
+
+    return unless $level >= $CONFIG{'verbose'};
 
     my ($sec,$min,$hour,$day,$mon,$year,undef,undef,undef)=localtime(time);
     my $timestamp = sprintf ( "%04d-%02d-%02d %02d:%02d:%02d",$year+1900,$mon+1,$day,$hour,$min,$sec);
