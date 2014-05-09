@@ -3,7 +3,7 @@
 
 The "brains" of 2pir's 16 flamethrowers.
 
-CLI Usage: 2pir.pl [--config (foo.ini)] [--high_threshold (integer)] [--low_threshold (integer)] [--min_firing_time (float)] [ [--fake] 
+CLI Usage: 2pir.pl [--config (foo.ini)] [--high_threshold (integer)] [--low_threshold (integer)] [--min_firing_time (float)]  
 
 --config
 	Location of .ini file containing default configuration variables. Default value is 2pir.ini.
@@ -20,9 +20,6 @@ CLI Usage: 2pir.pl [--config (foo.ini)] [--high_threshold (integer)] [--low_thre
 --logfile
 	Where to log application output.
 	There is no default; if left unspecified, all output will go to STDOUT. INFO and ERROR messages will go to STDOUT regardless.
-
---fake
-	Use fake serial port; useful for testing, but this functionality is not entirely finished at this time.
 
 --port
 	Address of the serial port to connect to; for example, /dev/ttyUSB0 for USB or /dev/ttyS0 for direct serial.

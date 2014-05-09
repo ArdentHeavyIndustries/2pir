@@ -7,7 +7,6 @@ use Getopt::Long;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 use Config::IniFiles;
-use FakePort;
 
 my %verbosity = (
     1 => 'ERROR',
@@ -19,7 +18,6 @@ my %OPTIONS;
 my %CONFIG;
 
 GetOptions(\%OPTIONS,
-    'fake=s',
     'logfile=s',
     'high_threshold=s',
     'low_threshold=s',
@@ -50,20 +48,11 @@ foreach my $OPTION ( keys %OPTIONS ) {
 $CONFIG{'high_threshold'}  ||= 80;
 $CONFIG{'low_threshold'}   ||= 200;
 $CONFIG{'min_firing_time'} ||= 0.2 # 200ms
-if( $CONFIG{'fake'} ) {
-    $CONFIG{'port'} ||= './test-io.out';
-} else {
-    $CONFIG{'port'} ||= '/dev/ttyUSB0';
-}
+$CONFIG{'port'} ||= '/dev/ttyUSB0';
 
 map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
   
-my $if0;
-if( $CONFIG{'fake'} ) {
-    $if0 = new FakePort($CONFIG{'port'});
-} else {
-    $if0 = new Device::SerialPort($CONFIG{'port'}, 0); #Change to /dev/ttyS0 for direct serial
-}
+my $if0 = new Device::SerialPort($CONFIG{'port'}, 0); #Change to /dev/ttyS0 for direct serial
 
 unless( $if0 ) {
     error("Could not initiate serial port connection");
