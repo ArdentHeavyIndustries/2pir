@@ -28,7 +28,8 @@ GetOptions(\%OPTIONS,
 
 $OPTIONS{'config'} ||= '/etc/2pir.ini';
 
-my $ini = Config::IniFiles->new( -file => "$OPTIONS{'config'}" );
+#my $ini = Config::IniFiles->new( -file => "$OPTIONS{'config'}" );
+my $ini = Config::IniFiles->new( -file => "/etc/2pir.ini" );
 
 $CONFIG{'high_threshold'}  = $ini->val('2pir','high_threshold');
 $CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
