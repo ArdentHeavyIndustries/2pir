@@ -37,6 +37,7 @@ $CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
 $CONFIG{'min_firing_time'} = $ini->val('2pir','min_firing_time');
 $CONFIG{'logfile'}         = $ini->val('2pir','logfile');
 $CONFIG{'port'}            = $ini->val('2pir','port');
+$CONFIG{'verbose'}         = $ini->val('2pir','verbose');
 
 # Over-ride options from the ini file w/anything passed in via the CLI
 foreach my $OPTION ( keys %OPTIONS ) {
