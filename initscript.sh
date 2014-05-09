@@ -14,23 +14,24 @@ start() {
         exit 1
     fi
 
+    mkdir -p $LOG_PATH
+
     if [ ! -e $LOG_PATH ]; then
-        echo "Error! $LOG_PATH is missing" 1>&2
         exit 1
     fi
 
-    CURRENT_DAEMON_LOG = "$LOG_PATH/daemon.log"
+    CURRENT_DAEMON_LOG="$LOG_PATH/daemon.log"
 
     if [ -e $CURRENT_DAEMON_LOG ]; then
-        ARCHIVED_LOG = `date +$LOG_PATH/daemon.%Y%m%d%H%M%S.log`
+        ARCHIVED_LOG=`date +$LOG_PATH/daemon.%Y%m%d%H%M%S.log`
         echo "Archiving current daemon log to $ARCHIVED_LOG"
         mv $CURRENT_DAEMON_LOG $ARCHIVED_LOG
     fi
 
-    CURRENT_APP_LOG = "$LOG_PATH/app.log"
+    CURRENT_APP_LOG="$LOG_PATH/app.log"
 
     if [ -e $CURRENT_APP_LOG ]; then
-        ARCHIVED_LOG = `date +$LOG_PATH/app.%Y%m%d%H%M%S.log`
+        ARCHIVED_LOG=`date +$LOG_PATH/app.%Y%m%d%H%M%S.log`
         echo "Archiving current daemon log to $ARCHIVED_LOG"
         mv $CURRENT_APP_LOG $ARCHIVED_LOG
     fi
