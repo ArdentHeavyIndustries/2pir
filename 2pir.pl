@@ -26,7 +26,7 @@ GetOptions(\%OPTIONS,
     'config=s',
 );
 
-$OPTIONS{'config'} ||= '2pir.ini';
+$OPTIONS{'config'} ||= '/etc/2pir.ini';
 
 my $ini = Config::IniFiles->new( -file => "$OPTIONS{'config'}" );
 
