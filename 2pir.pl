@@ -7,6 +7,7 @@ use Getopt::Long;
 use Device::SerialPort;
 use Time::HiRes qw (time usleep);
 use Config::IniFiles;
+use List::Flatten
 
 my %verbosity = (
     0 => 'ERROR',
@@ -54,7 +55,7 @@ $CONFIG{'min_firing_time'} ||= 0.2; # 200ms
 $CONFIG{'port'} ||= '/dev/ttyUSB0';
 
 map { info("CONFIG: $_ = $CONFIG{$_}") } ( sort keys %CONFIG );
-  
+
 my $if0 = new Device::SerialPort($CONFIG{'port'}, 0); #Change to /dev/ttyS0 for direct serial
 
 unless( $if0 ) {
@@ -74,27 +75,35 @@ unless( $if0->write_settings ) {
 }
 
 # sensor reading blocky things.
-my @sensors1 = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,1);
+my @points_to_read = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
 
-my %sensor_addresses = (
-			1 => 0,
-			2 => 1,
-			3 => 2,
-			4 => 3,
-			5 => 4,
-			6 => 5,
-			7 => 6,
-			8 => 7,
-			9 => 8,
-			10 => 9,
-			11 => 10,
-			12 => 11,
-			13 => 12,
-			14 => 13,
-			15 => 14,
-			16 => 15,
+# there are 16 points. each has one effect and two sensors that trigger it.
+my %point_addresses = (
+      1 => [0,1],
+      2 => [2,3],
+      3 => [4,5],
+      4 => [6,7],
+      5 => [8,9],
+      6 => [10,11],
+      7 => [12,13],
+      8 => [14,15],
+      9 => [16,17],
+      10 => [18,19],
+      11 => [20,21],
+      12 => [22,23],
+      13 => [24,25],
+      14 => [26,27],
+      15 => [29,29],
+      16 => [30,31],
 );
 
+my %sensor_to_point;
+
+# build a reverse mapping.
+foreach my $effect (keys %point_addresses) {
+  sensor_to_point{$point_addresses[0]} = $effect;
+  sensor_to_point{$point_addresses[1]} = $effect;
+}
 
 my %effect_addresses = (
 		     1  => [32,33,34,35],
@@ -140,12 +149,13 @@ my @to_write;
 my $last_batch = 'b';
 while(!$exit) {
     # my @read_sensors0;
-    my @read_sensors1 = @sensors1;
-
     $i++;
 
     # translate sensor ids into sensor addresses.
-    my @write_sensors1 = map { $sensor_addresses{$_} } @read_sensors1;
+    my @addresses_to_read = flat(map { $point_addresses{$_} } @points_to_read);
+
+    # throw on a bullshit value that will be discarded.
+    push(@addresses_to_read, 0);
 
     # write whatever needs it between read cycles
     if(@to_write) {
@@ -156,38 +166,40 @@ while(!$exit) {
     }
 
     # send the reads.
-    $if0->write(pack('C*', @write_sensors1));
-
-    #remove that last discarded value.
-    pop @read_sensors1;
+    $if0->write(pack('C*', @addresses_to_read));
 
     my $first1 = 1;
 
-    while(@read_sensors1) {
+    while(@addresses_to_read) {
 
 	my ($count1, $raw_read1) = $if0->read(255);
-	
+
 	next unless ($count1);
-	
+
 	foreach my $read ($raw_read1) {
 	    foreach my $value (unpack('C*', $read)) {
-		my $curr;
+		my $curr, $sensor;
+
 		if($first1) {
                     debug("Discarding first value");
 		    undef $first1;
 		    next;
 		}
-		
-		$curr = shift(@read_sensors1);
+
+		$sensor = shift(@addresses_to_read);
+    $curr = $sensor_to_point{$sensor};
 
 		push @{$timed{$curr}}, { val => $value, time => time() };
-		
+
 		# trim @timed
 		if(scalar(@{$timed{$curr}}) > 35) {
 		    shift(@{$timed{$curr}});
 		} else {
 		    next;
 		}
+
+    # store the current sensor value
+    $sensor_current{$sensor} = $value;
 
 		# if the value is high enough for low effect, we can assume it's correct.
 		if($value >= $CONFIG{'high_threshold'}) {
@@ -196,7 +208,7 @@ while(!$exit) {
 		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
 		    burninate_motherfuckers_omg($curr, 'high');
                 }
-				
+
 		# if the value is high enough for low effect, we can assume it's correct.
 		elsif($value >= $CONFIG{'low_threshold'} + 8) {
 		    # low effect start firing (hysteresis)
@@ -206,7 +218,7 @@ while(!$exit) {
 		    burninate_motherfuckers_omg($curr, 'low');
 		    next;
 		}
-		
+
 		# effect was already on
 		elsif(($value >= $CONFIG{'low_threshold'}) && $effect_state{$curr} == 'low') {
 		    # low effect continue firing
@@ -215,11 +227,17 @@ while(!$exit) {
 		    burninate_motherfuckers_omg($curr, 'low');
 		    next;
 		}
-		
-                else {
-		    burninate_motherfuckers_omg($curr, 'off');
-                    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
-                }
+
+    else {
+        # check this value and the other value too.
+        my $current_values = map { $sensor_current{$_} } $point_addresses{$curr};
+        if($current_values[0] < $CONFIG{'low_threshold'} && $current_values[1] < $CONFIG{'low_threshold'}) {
+          burninate_motherfuckers_omg($curr, 'off');
+          debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
+        }
+    }
+
+    # omg spaces or tabs which one?
 	    }
 	}
     }
@@ -237,7 +255,7 @@ sub burninate_motherfuckers_omg {
     debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
-	if($state eq 'low') {
+	 if($state eq 'low') {
           push @to_write, getEffectAddresses( $effect, 3 );
           $last_fired{$effect} = time();
           info("Turning on $effect");
@@ -327,7 +345,7 @@ sub logit {
         close(LOG);
     } else {
         print $message;
-    }    
+    }
 }
 
 sub getEffectAddresses {
