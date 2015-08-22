@@ -79,50 +79,50 @@ my @points_to_read = (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
 
 # there are 16 points. each has one effect and two sensors that trigger it.
 my %point_addresses = (
-      1 => [0,1],
-      2 => [2,3],
-      3 => [4,5],
-      4 => [6,7],
-      5 => [8,9],
-      6 => [10,11],
-      7 => [12,13],
-      8 => [14,15],
-      9 => [16,17],
-      10 => [18,19],
-      11 => [20,21],
-      12 => [22,23],
-      13 => [24,25],
-      14 => [26,27],
-      15 => [29,29],
-      16 => [30,31],
+    1 => [0,1],
+    2 => [2,3],
+    3 => [4,5],
+    4 => [6,7],
+    5 => [8,9],
+    6 => [10,11],
+    7 => [12,13],
+    8 => [14,15],
+    9 => [16,17],
+    10 => [18,19],
+    11 => [20,21],
+    12 => [22,23],
+    13 => [24,25],
+    14 => [26,27],
+    15 => [29,29],
+    16 => [30,31],
 );
 
 my %sensor_to_point;
 
 # build a reverse mapping.
 foreach my $effect (keys %point_addresses) {
-  sensor_to_point{$point_addresses[0]} = $effect;
-  sensor_to_point{$point_addresses[1]} = $effect;
+    sensor_to_point{$point_addresses[0]} = $effect;
+    sensor_to_point{$point_addresses[1]} = $effect;
 }
 
 my %effect_addresses = (
-		     1  => [32,33,34,35],
-		     2  => [36,37,38,39],
-		     3  => [40,41,42,43],
-		     4  => [44,45,46,47],
-		     5  => [48,49,50,51],
-		     6  => [52,53,54,55],
-		     7  => [56,57,58,59],
-		     16 => [60,61,62,63],
-		     9  => [64,65,66,67],
-		     10 => [68,69,70,71],
-		     11 => [72,73,74,75],
-		     12 => [76,77,78,79],
-		     13 => [80,81,82,83],
-		     14 => [84,85,86,87],
-		     15 => [88,89,90,91],
-		     8  => [92,93,94,95],
-		     );
+	1  => [32,33,34,35],
+	2  => [36,37,38,39],
+	3  => [40,41,42,43],
+	4  => [44,45,46,47],
+	5  => [48,49,50,51],
+	6  => [52,53,54,55],
+	7  => [56,57,58,59],
+	16 => [60,61,62,63],
+	9  => [64,65,66,67],
+	10 => [68,69,70,71],
+	11 => [72,73,74,75],
+	12 => [76,77,78,79],
+	13 => [80,81,82,83],
+	14 => [84,85,86,87],
+	15 => [88,89,90,91],
+	8  => [92,93,94,95],
+);
 
 # for storing the current state of each effect.
 my %effect_state;
@@ -138,8 +138,8 @@ my $i = 0;
 # turn everything off.
 info("2pir: turning off all effects on startup");
 foreach my $effect (keys %effect_addresses) {
-  $effect_state{$effect} ||= 'off';
-  burninate_motherfuckers_omg($effect, 'off');
+    $effect_state{$effect} ||= 'off';
+    burninate_motherfuckers_omg($effect, 'off');
 }
 
 my $last_time = time();
@@ -172,74 +172,68 @@ while(!$exit) {
 
     while(@addresses_to_read) {
 
-	my ($count1, $raw_read1) = $if0->read(255);
+    	my ($count1, $raw_read1) = $if0->read(255);
 
-	next unless ($count1);
+    	next unless ($count1);
 
-	foreach my $read ($raw_read1) {
-	    foreach my $value (unpack('C*', $read)) {
-		my $curr, $sensor;
+    	foreach my $read ($raw_read1) {
+    	    foreach my $value (unpack('C*', $read)) {
+        		my $curr, $sensor;
 
-		if($first1) {
+        		if($first1) {
                     debug("Discarding first value");
-		    undef $first1;
-		    next;
-		}
+        		    undef $first1;
+        		    next;
+        		}
 
-		$sensor = shift(@addresses_to_read);
-    $curr = $sensor_to_point{$sensor};
+        		$sensor = shift(@addresses_to_read);
+                $curr = $sensor_to_point{$sensor};
 
-		push @{$timed{$curr}}, { val => $value, time => time() };
+        		push @{$timed{$curr}}, { val => $value, time => time() };
 
-		# trim @timed
-		if(scalar(@{$timed{$curr}}) > 35) {
-		    shift(@{$timed{$curr}});
-		} else {
-		    next;
-		}
+        		# trim @timed
+        		if(scalar(@{$timed{$curr}}) > 35) {
+        		    shift(@{$timed{$curr}});
+        		} else {
+        		    next;
+        		}
 
-    # store the current sensor value
-    $sensor_current{$sensor} = $value;
+                # store the current sensor value
+                $sensor_current{$sensor} = $value;
 
-		# if the value is high enough for low effect, we can assume it's correct.
-		if($value >= $CONFIG{'high_threshold'}) {
-		    # high effect start firing
-		    #debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
-		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    burninate_motherfuckers_omg($curr, 'high');
+        		# if the value is high enough for low effect, we can assume it's correct.
+        		if($value >= $CONFIG{'high_threshold'}) {
+        		    # high effect start firing
+        		    #debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
+        		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
+        		    burninate_motherfuckers_omg($curr, 'high');
+                } elsif($value >= $CONFIG{'low_threshold'} + 8) {
+                    # if the value is high enough for low effect, we can assume it's correct.
+
+        		    # low effect start firing (hysteresis)
+
+        		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
+        		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
+        		    burninate_motherfuckers_omg($curr, 'low');
+        		    next;
+        		} elsif(($value >= $CONFIG{'low_threshold'}) && $effect_state{$curr} == 'low') {
+                    # effect was already on
+
+        		    # low effect continue firing
+        		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
+        		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
+        		    burninate_motherfuckers_omg($curr, 'low');
+        		    next;
+        		} else {
+                    # check this value and the other value too.
+                    my $current_values = map { $sensor_current{$_} } $point_addresses{$curr};
+                    if($current_values[0] < $CONFIG{'low_threshold'} && $current_values[1] < $CONFIG{'low_threshold'}) {
+                      burninate_motherfuckers_omg($curr, 'off');
+                      debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
+                    }
                 }
-
-		# if the value is high enough for low effect, we can assume it's correct.
-		elsif($value >= $CONFIG{'low_threshold'} + 8) {
-		    # low effect start firing (hysteresis)
-
-		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
-		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    burninate_motherfuckers_omg($curr, 'low');
-		    next;
-		}
-
-		# effect was already on
-		elsif(($value >= $CONFIG{'low_threshold'}) && $effect_state{$curr} == 'low') {
-		    # low effect continue firing
-		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
-		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-		    burninate_motherfuckers_omg($curr, 'low');
-		    next;
-		}
-
-    else {
-        # check this value and the other value too.
-        my $current_values = map { $sensor_current{$_} } $point_addresses{$curr};
-        if($current_values[0] < $CONFIG{'low_threshold'} && $current_values[1] < $CONFIG{'low_threshold'}) {
-          burninate_motherfuckers_omg($curr, 'off');
-          debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
+            }
         }
-    }
-
-    # omg spaces or tabs which one?
-	    }
-	}
     }
 }
 
@@ -255,55 +249,55 @@ sub burninate_motherfuckers_omg {
     debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
-	 if($state eq 'low') {
-          push @to_write, getEffectAddresses( $effect, 3 );
-          $last_fired{$effect} = time();
-          info("Turning on $effect");
-	} elsif($state eq 'high') {
-          push @to_write, getEffectAddresses( $effect, 1 );
-          $last_fired{$effect} = time();
-          info("Turning on $effect");
-	} elsif($state eq 'off') {
-          if($i%100 == 0) {
-            # this clause makes sure to turn stuff off if it should be.
-            push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-            info("Turning off $effect");
-	  } else {
-            debug("$effect is already off");
-          }
+    	if($state eq 'low') {
+              push @to_write, getEffectAddresses( $effect, 3 );
+              $last_fired{$effect} = time();
+              info("Turning on $effect");
+    	} elsif($state eq 'high') {
+              push @to_write, getEffectAddresses( $effect, 1 );
+              $last_fired{$effect} = time();
+              info("Turning on $effect");
+    	} elsif($state eq 'off') {
+            if($i%100 == 0) {
+                # this clause makes sure to turn stuff off if it should be.
+                push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
+                info("Turning off $effect");
+        	} else {
+                debug("$effect is already off");
+            }
         }
     } elsif($effect_state{$effect} eq 'low') {
-	# low effect is on.
-	if($state eq 'low') {
-          debug("$effect is already low");
-	} elsif($state eq 'high') {
-          push @to_write, getEffectAddresses( $effect, 2, 1 );
-          $last_fired{$effect} = time();
-          info("Increasing intensity of $effect");
-	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
-          # don't shut off unless the effect was fired more than 40ms ago.
-          #print "off from low\n";
-          push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-          info("Shutting off $effect");
-	} else {
-          info("Not enough time has elapsed to shut down $effect, skipping");
-	  return;
+	    # low effect is on.
+    	if($state eq 'low') {
+            debug("$effect is already low");
+    	} elsif($state eq 'high') {
+            push @to_write, getEffectAddresses( $effect, 2, 1 );
+            $last_fired{$effect} = time();
+            info("Increasing intensity of $effect");
+    	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
+            # don't shut off unless the effect was fired more than 40ms ago.
+            #print "off from low\n";
+            push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
+            info("Shutting off $effect");
+    	} else {
+            info("Not enough time has elapsed to shut down $effect, skipping");
+    	    return;
         }
     } elsif($effect_state{$effect} eq 'high') {
-	# high effect is on.
-	if($state eq 'low') {
-          push @to_write, getEffectAddresses( $effect, 0, 0 );
-          $last_fired{$effect} = time();
-          info("Decreasing intensity of $effect");
-	} elsif($state eq 'high') {
-	  debug("$effect is already high");
-	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
-          #print "off from high\n";
-          push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
-          info("Shutting off $effect");
-	} else {
-          info("Not enough time has elapsed to shut down $effect, skipping");
-          return;
+	   # high effect is on.
+    	if($state eq 'low') {
+            push @to_write, getEffectAddresses( $effect, 0, 0 );
+            $last_fired{$effect} = time();
+            info("Decreasing intensity of $effect");
+    	} elsif($state eq 'high') {
+    	    debug("$effect is already high");
+    	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
+            #print "off from high\n";
+            push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
+            info("Shutting off $effect");
+    	} else {
+            info("Not enough time has elapsed to shut down $effect, skipping");
+            return;
         }
     }
 
@@ -349,14 +343,14 @@ sub logit {
 }
 
 sub getEffectAddresses {
-  my $effect = shift;
-  return map {  $effect_addresses{$effect}->[$_] } @_;
+    my $effect = shift;
+    return map {  $effect_addresses{$effect}->[$_] } @_;
 }
 
 sub DESTROY {
-  info("Turning off all effects on shutdown");
-  foreach my $effect (keys %effect_addresses) {
-    burninate_motherfuckers_omg($effect, 'off');
-  }
+    info("Turning off all effects on shutdown");
+    foreach my $effect (keys %effect_addresses) {
+        burninate_motherfuckers_omg($effect, 'off');
+    }
 }
 
