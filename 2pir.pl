@@ -159,10 +159,10 @@ while(!$exit) {
 
     # write whatever needs it between read cycles
     if(@to_write) {
-	debug("********** write: " . join(',', @to_write) );
-	$if0->write(pack('C*', @to_write));
-	$if0->read(255);
-	undef @to_write;
+    	debug("********** write: " . join(',', @to_write) );
+    	$if0->write(pack('C*', @to_write));
+    	$if0->read(255);
+    	undef @to_write;
     }
 
     # send the reads.
@@ -228,8 +228,8 @@ while(!$exit) {
                     # check this value and the other value too.
                     my $current_values = map { $sensor_current{$_} } $point_addresses{$curr};
                     if($current_values[0] < $CONFIG{'low_threshold'} && $current_values[1] < $CONFIG{'low_threshold'}) {
-                      burninate_motherfuckers_omg($curr, 'off');
-                      debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
+                        burninate_motherfuckers_omg($curr, 'off');
+                        debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
                     }
                 }
             }
