@@ -20,8 +20,7 @@ my %CONFIG;
 
 GetOptions(\%OPTIONS,
     'logfile=s',
-    'high_threshold=s',
-    'low_threshold=s',
+    'threshold=s',
     'min_firing_time=s',
     'port=s',
     'config=s',
@@ -33,8 +32,7 @@ $OPTIONS{'config'} ||= '/etc/2pir.ini';
 #my $ini = Config::IniFiles->new( -file => "$OPTIONS{'config'}" );
 my $ini = Config::IniFiles->new( -file => "/etc/2pir.ini" );
 
-$CONFIG{'high_threshold'}  = $ini->val('2pir','high_threshold');
-$CONFIG{'low_threshold'}   = $ini->val('2pir','low_threshold');
+$CONFIG{'threshold'}       = $ini->val('2pir','threshold');
 $CONFIG{'min_firing_time'} = $ini->val('2pir','min_firing_time');
 $CONFIG{'logfile'}         = $ini->val('2pir','logfile');
 $CONFIG{'port'}            = $ini->val('2pir','port');
@@ -49,8 +47,7 @@ foreach my $OPTION ( keys %OPTIONS ) {
 }
 
 # Set default values if necessary
-$CONFIG{'high_threshold'}  ||= 80;
-$CONFIG{'low_threshold'}   ||= 200;
+$CONFIG{'threshold'}  ||= 80;
 $CONFIG{'min_firing_time'} ||= 0.2; # 200ms
 $CONFIG{'port'} ||= '/dev/ttyUSB0';
 
@@ -201,33 +198,23 @@ while(!$exit) {
                 # store the current sensor value
                 $sensor_current{$sensor} = $value;
 
-        		# if the value is high enough for low effect, we can assume it's correct.
-        		if($value >= $CONFIG{'high_threshold'}) {
-        		    # high effect start firing
-        		    #debug("high start $curr, val $value, tdif " . (time() - $_->{time}));
+        		# adding a few units for hysteresis
+        		if($value >= $CONFIG{'threshold'} + 8) {
+        		    # flame effect start firing
+        		    #debug("fire start $curr, val $value, tdif " . (time() - $_->{time}));
         		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-        		    burninate_motherfuckers_omg($curr, 'high');
-                } elsif($value >= $CONFIG{'low_threshold'} + 8) {
-                    # if the value is high enough for low effect, we can assume it's correct.
-
-        		    # low effect start firing (hysteresis)
-
-        		    debug("low start $curr, val $value, tdif " . (time() - $_->{time}));
-        		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-        		    burninate_motherfuckers_omg($curr, 'low');
-        		    next;
-        		} elsif(($value >= $CONFIG{'low_threshold'}) && $effect_state{$curr} == 'low') {
+        		    burninate_motherfuckers_omg($curr, 'fire');
+        		} elsif(($value >= $CONFIG{'threshold'}) && $effect_state{$curr} == 'fire') {
                     # effect was already on
 
-        		    # low effect continue firing
-        		    debug("low cont  $curr, val $value, tdif " . (time() - $_->{time}));
+        		    # flame effect continue firing
+        		    debug("fire continuing $curr, value $value, timediff " . (time() - $_->{time}));
         		    debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}));
-        		    burninate_motherfuckers_omg($curr, 'low');
-        		    next;
+        		    burninate_motherfuckers_omg($curr, 'fire');
         		} else {
                     # check this value and the other value too.
                     my $current_values = map { $sensor_current{$_} } $point_addresses{$curr};
-                    if($current_values[0] < $CONFIG{'low_threshold'} && $current_values[1] < $CONFIG{'low_threshold'}) {
+                    if($current_values[0] < $CONFIG{'threshold'} && $current_values[1] < $CONFIG{'threshold'}) {
                         burninate_motherfuckers_omg($curr, 'off');
                         debug("values: " . join(', ', map { $_->{val} } @{$timed{$curr}}) );
                     }
@@ -241,19 +228,13 @@ sub burninate_motherfuckers_omg {
     my($effect, $state) = @_;
 
     # effect array offsets:
-    # 0 - high off
-    # 1 - high on
-    # 2 - low off
-    # 3 - low on
+    # 0 - fire off
+    # 1 - fire on
 
     debug(sprintf('Attempting to set Effect %s from %s to %s',$effect,$effect_state{$effect},$state));
 
     if($effect_state{$effect} eq 'off') {
-    	if($state eq 'low') {
-              push @to_write, getEffectAddresses( $effect, 3 );
-              $last_fired{$effect} = time();
-              info("Turning on $effect");
-    	} elsif($state eq 'high') {
+    	if($state eq 'fire') {
               push @to_write, getEffectAddresses( $effect, 1 );
               $last_fired{$effect} = time();
               info("Turning on $effect");
@@ -266,33 +247,12 @@ sub burninate_motherfuckers_omg {
                 debug("$effect is already off");
             }
         }
-    } elsif($effect_state{$effect} eq 'low') {
-	    # low effect is on.
-    	if($state eq 'low') {
-            debug("$effect is already low");
-    	} elsif($state eq 'high') {
-            push @to_write, getEffectAddresses( $effect, 2, 1 );
-            $last_fired{$effect} = time();
-            info("Increasing intensity of $effect");
+    } elsif($effect_state{$effect} eq 'fire') {
+	   # flame effect is on.
+    	if($state eq 'fire') {
+    	    debug("$effect is already fire");
     	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
-            # don't shut off unless the effect was fired more than 40ms ago.
-            #print "off from low\n";
-            push @to_write, getEffectAddresses( $effect, 2, 0, 0, 2 );
-            info("Shutting off $effect");
-    	} else {
-            info("Not enough time has elapsed to shut down $effect, skipping");
-    	    return;
-        }
-    } elsif($effect_state{$effect} eq 'high') {
-	   # high effect is on.
-    	if($state eq 'low') {
-            push @to_write, getEffectAddresses( $effect, 0, 0 );
-            $last_fired{$effect} = time();
-            info("Decreasing intensity of $effect");
-    	} elsif($state eq 'high') {
-    	    debug("$effect is already high");
-    	} elsif(($last_fired{$effect} + $CONFIG{'min_firing_time'}) <= time()) {
-            #print "off from high\n";
+            #print "off from fire\n";
             push @to_write, getEffectAddresses( $effect, 0, 2, 0, 2 );
             info("Shutting off $effect");
     	} else {
